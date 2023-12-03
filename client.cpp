@@ -74,54 +74,53 @@ int main(int argc, char *argv[]) {
 
 
     // Read the entire file and create packets
-//     size_t bytesRead;
-//     size_t totalPackets = 0;
-//     int congestionWindow = 1;
-//     int numOfRetransmit;
-
-//     // Build the packet once
-//     bytesRead = fread(pkt.payload, 1, sizeof(pkt.payload), fp);
-//     build_packet(&pkt, totalPackets, 0, 0, 0, bytesRead, pkt.payload);
-
-
-//     while (totalPackets > 0) {
-
-//         for (int i = 0; i < congestionWindow && i < totalPackets; ++i) {
-//             sendto(send_sockfd, &pkt, bytesRead, 0, (struct sockaddr*)&server_addr_to, sizeof(server_addr_to));
-//         }
-
-//         // Wait for acknowledgment with retry logic
-//         numOfRetransmit = 0;
-// /*         while (!receiveAck()) {
-//             // Retry until acknowledgment is received or maximum retries reached
-//             numOfRetransmit++;
-//         } */
-
-//          totalPackets -= congestionWindow;
-
-//         if(numOfRetransmit == 0)
-//         {
-//             //no loss
-//             congestionWindow += 1;
-//         }
-//         else 
-//         {
-//             //loss
-//             congestionWindow = congestionWindow/2;
-//         }
-//     }
-    const size_t PACKET_SIZE = 1024;  // cannot exceed len(data) of 1200
-    char packet[PACKET_SIZE];
     size_t bytesRead;
+    size_t totalPackets = 0;
+    int congestionWindow = 1;
+    int numOfRetransmit;
 
-    while ((bytesRead = fread(packet, 1, PACKET_SIZE, fp)) > 0) {
-        // Process the packet
-        printf("Packet Size: %zu\n", bytesRead);
-        //fwrite(packet, 1, bytesRead, stdout);
-        printf("\n\n");
+    // Build the packet once
+    bytesRead = fread(pkt.payload, 1, sizeof(pkt.payload), fp);
+    build_packet(&pkt, totalPackets, 0, 0, 0, bytesRead, pkt.payload);
+
+
+    while (totalPackets > 0) {
+
+        for (int i = 0; i < congestionWindow && i < totalPackets; ++i) {
+            sendto(send_sockfd, &pkt, bytesRead, 0, (struct sockaddr*)&server_addr_to, sizeof(server_addr_to));
+        }
+
+        // Wait for acknowledgment with retry logic
+        numOfRetransmit = 0;
+/*         while (!receiveAck()) {
+            numOfRetransmit++;
+        } */
+
+         totalPackets -= congestionWindow;
+
+        if(numOfRetransmit == 0)
+        {
+            //no loss
+            congestionWindow += 1;
+        }
+        else 
+        {
+            //loss
+            congestionWindow = congestionWindow/2;
+        }
     }
+    // const size_t PACKET_SIZE = 1024;  // cannot exceed len(data) of 1200
+    // char packet[PACKET_SIZE];
+    // size_t bytesRead;
 
-    printf("done");
+    // while ((bytesRead = fread(packet, 1, PACKET_SIZE, fp)) > 0) {
+    //     // Process the packet
+    //     printf("Packet Size: %zu\n", bytesRead);
+    //     //fwrite(packet, 1, bytesRead, stdout);
+    //     printf("\n\n");
+    // }
+
+    // printf("done");
 
 
     // Test basic input/output

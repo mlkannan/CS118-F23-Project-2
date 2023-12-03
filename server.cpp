@@ -59,6 +59,7 @@ int main() {
     bzero(output_buffer, sizeof(output_buffer));
 
     bytes_read = recvfrom(listen_sockfd, output_buffer, sizeof(output_buffer), 0, (struct sockaddr*)&client_addr_from, &addr_size);
+    printf("%s\n", output_buffer);
 
     /*
     while((bytes_read = recvfrom(listen_sockfd, output_buffer, sizeof(output_buffer) - 1, 0, (struct sockaddr*)&client_addr_from, &addr_size)) > 0)
@@ -68,8 +69,6 @@ int main() {
         bzero(output_buffer, sizeof(output_buffer));
     }
     */
-
-    printf("Finished receiving\n");
     
 
     fclose(fp);
