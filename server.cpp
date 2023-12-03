@@ -52,7 +52,24 @@ int main() {
     FILE *fp = fopen("output.txt", "wb");
 
     // TODO: Receive file from the client and save it as output.txt
+    printf("File opened");
 
+    char output_buffer[MAX_SEQUENCE];
+    ssize_t bytes_read;
+    bzero(output_buffer, sizeof(output_buffer));
+
+    bytes_read = recvfrom(listen_sockfd, output_buffer, sizeof(output_buffer), 0, (struct sockaddr*)&client_addr_from, &addr_size);
+
+    /*
+    while((bytes_read = recvfrom(listen_sockfd, output_buffer, sizeof(output_buffer) - 1, 0, (struct sockaddr*)&client_addr_from, &addr_size)) > 0)
+    {
+        fprintf(fp, "%.*s", sizeof(output_buffer), output_buffer);
+        printf("%s", buffer);
+        bzero(output_buffer, sizeof(output_buffer));
+    }
+    */
+
+    printf("Finished receiving\n");
     
 
     fclose(fp);

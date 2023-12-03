@@ -72,19 +72,26 @@ int main(int argc, char *argv[]) {
 
     // TODO: Read from file, and initiate reliable data transfer to the server
 
-
-
     const size_t PACKET_SIZE = 1024;  // cannot exceed len(data) of 1200
     char packet[PACKET_SIZE];
     size_t bytesRead;
+
     while ((bytesRead = fread(packet, 1, PACKET_SIZE, fp)) > 0) {
         // Process the packet
         printf("Packet Size: %zu\n", bytesRead);
-        fwrite(packet, 1, bytesRead, stdout);
+        //fwrite(packet, 1, bytesRead, stdout);
         printf("\n\n");
     }
 
+    printf("done");
 
+
+    // Test basic input/output
+
+    const char test_output[] = "this is a test";
+    sendto(send_sockfd, (const char *)test_output, sizeof(test_output), 0, (struct sockaddr*)&server_addr_to, sizeof(struct sockaddr));
+
+    printf("i sent it");
 
     fclose(fp);
     close(listen_sockfd);
