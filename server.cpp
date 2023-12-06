@@ -98,8 +98,6 @@ int main() {
         bzero(output_buffer, sizeof(output_buffer));
     }
     */
-
-    printf("Finished receiving\n");
     
 
     fclose(fp);
