@@ -93,6 +93,7 @@ int main(int argc, char *argv[]) {
     unsigned int bytesRead = 0;
 
     int iter = 0;
+    bool retransmit = false;
 
     while ( last != '1' )
     {
@@ -104,7 +105,10 @@ int main(int argc, char *argv[]) {
             build_packet(&pkt, ack_num, seq_num, '0', '1', PAYLOAD_SIZE, filestart + (sizeof(char)*seq_num) );
         }
         printSend(&pkt, 0);
-        ack_num += PAYLOAD_SIZE;
+        if (!retransmit)
+        {
+            ack_num += PAYLOAD_SIZE;
+        }
 
         sendto(send_sockfd, &pkt, pkt.length, 0, (struct sockaddr*)&server_addr_to, sizeof(server_addr_to));
         printf("Finished sending!\n");
@@ -115,11 +119,13 @@ int main(int argc, char *argv[]) {
         {
             printf("Packet successsfully ACK'd with ACK = %d\n", ack_num);
             seq_num = ack_num;
+            retransmit = false;
         }
         else
         {
             printf("Failed ACK with ACK = %d\n", ack_pkt.acknum);
             last = '0';
+            retransmit = true;
         }
     }
 
