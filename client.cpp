@@ -18,8 +18,8 @@ int main(int argc, char *argv[]) {
     char buffer[PAYLOAD_SIZE];
     unsigned short seq_num = 0;
     unsigned short ack_num = 0;
-    char last = 0;
-    char ack = 0;
+    char last = '0';
+    char ack = '0';
 
     // read filename from command line argument
     if (argc != 2) {
@@ -71,69 +71,62 @@ int main(int argc, char *argv[]) {
     }
 
     // TODO: Read from file, and initiate reliable data transfer to the server
+    // Read whole file into char array buffer
+    long filesize;
+    fseek( fp , 0L , SEEK_END);
+    filesize = ftell( fp );
+    rewind( fp );
+    printf("Filesize: %ld\n", filesize);
 
-
-    // Read the entire file and create packets
-//     size_t bytesRead;
-//     size_t totalPackets = 0;
-//     int congestionWindow = 1;
-//     int numOfRetransmit;
-
-//     // Build the packet once
-//     bytesRead = fread(pkt.payload, 1, sizeof(pkt.payload), fp);
-//     build_packet(&pkt, totalPackets, 0, 0, 0, bytesRead, pkt.payload);
-
-
-//     while (totalPackets > 0) {
-
-//         for (int i = 0; i < congestionWindow && i < totalPackets; ++i) {
-//             sendto(send_sockfd, &pkt, bytesRead, 0, (struct sockaddr*)&server_addr_to, sizeof(server_addr_to));
-//         }
-
-//         // Wait for acknowledgment with retry logic
-//         numOfRetransmit = 0;
-// /*         while (!receiveAck()) {
-//             // Retry until acknowledgment is received or maximum retries reached
-//             numOfRetransmit++;
-//         } */
-
-//          totalPackets -= congestionWindow;
-
-//         if(numOfRetransmit == 0)
-//         {
-//             //no loss
-//             congestionWindow += 1;
-//         }
-//         else 
-//         {
-//             //loss
-//             congestionWindow = congestionWindow/2;
-//         }
-//     }
-    const size_t PACKET_SIZE = 1024;  // cannot exceed len(data) of 1200
-    char packet[PACKET_SIZE];
-    size_t bytesRead;
-
-    while ((bytesRead = fread(packet, 1, PACKET_SIZE, fp)) > 0) {
-        // Process the packet
-        printf("Packet Size: %zu\n", bytesRead);
-        //fwrite(packet, 1, bytesRead, stdout);
-        printf("\n\n");
+    char* filebuffer = (char*)calloc(1, filesize+1);
+    const char* filestart = filebuffer;
+    if ( fread( filebuffer, filesize, 1, fp ) <= 0 )
+    {
+        printf("FAILED TO READ\n");
+        return 1;
     }
+    printf("Finished reading into filebuffer\n");
 
-    printf("done");
 
+    // Create first packet
 
-    // Test basic input/output
+    unsigned int bytesRead = 0;
 
-    const char test_output[] = "this is a test";
-    sendto(send_sockfd, (const char *)test_output, sizeof(test_output), 0, (struct sockaddr*)&server_addr_to, sizeof(struct sockaddr));
+    int iter = 0;
 
-    printf("i sent it");
+    while ( last != '1' )
+    {
+        build_packet(&pkt, ack_num, seq_num, '0', '0', PAYLOAD_SIZE, filestart + (sizeof(char)*seq_num) );
+        printf("Built a packet size: %lu\n", sizeof(pkt.payload));
+        if (sizeof(pkt.payload) < PAYLOAD_SIZE)
+        {
+            last = '1';
+            build_packet(&pkt, ack_num, seq_num, '0', '1', PAYLOAD_SIZE, filestart + (sizeof(char)*seq_num) );
+        }
+        printSend(&pkt, 0);
+        ack_num += PAYLOAD_SIZE;
+
+        sendto(send_sockfd, &pkt, pkt.length, 0, (struct sockaddr*)&server_addr_to, sizeof(server_addr_to));
+        printf("Finished sending!\n");
+
+        recvfrom(listen_sockfd, &ack_pkt, sizeof(&ack_pkt), 0, (struct sockaddr*)&server_addr_from, &addr_size);
+        printf("Received ACK pkt size: %lu\n", sizeof(ack_pkt.payload));
+        if ( ack_pkt.acknum == ack_num )
+        {
+            printf("Packet successsfully ACK'd with ACK = %d\n", ack_num);
+            seq_num = ack_num;
+        }
+        else
+        {
+            printf("Failed ACK with ACK = %d\n", ack_pkt.acknum);
+            last = '0';
+        }
+    }
 
     fclose(fp);
     close(listen_sockfd);
     close(send_sockfd);
+    free(filebuffer);
     return 0;
 }
 

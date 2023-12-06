@@ -52,13 +52,43 @@ int main() {
     FILE *fp = fopen("output.txt", "wb");
 
     // TODO: Receive file from the client and save it as output.txt
-    printf("File opened");
 
-    char output_buffer[MAX_SEQUENCE];
-    ssize_t bytes_read;
-    bzero(output_buffer, sizeof(output_buffer));
+    printf("File opened\n");
 
-    bytes_read = recvfrom(listen_sockfd, output_buffer, sizeof(output_buffer), 0, (struct sockaddr*)&client_addr_from, &addr_size);
+    char last = '0';
+
+    int iter = 0;
+    while ( last != '1' )
+    {
+        recv_len = recvfrom(listen_sockfd, &buffer, PAYLOAD_SIZE, 0, (struct sockaddr*)&client_addr_from, &addr_size);
+        printf("I got a packet\n");
+        printf("size: %lu\n", buffer.length);
+
+        if ( buffer.seqnum == expected_seq_num )
+        {
+            last = ack_pkt.last;
+            fprintf(fp, "%.*s", recv_len, buffer.payload);
+            expected_seq_num += recv_len;
+            printf("\n%d", recv_len);
+            ack_pkt.acknum = expected_seq_num;
+            ack_pkt.seqnum = expected_seq_num;
+            ack_pkt.ack = '1';
+            ack_pkt.last = (char)last;
+            ack_pkt.length = PAYLOAD_SIZE;
+            sendto(send_sockfd, &ack_pkt, ack_pkt.length, 0, (struct sockaddr*)&client_addr_to, addr_size);
+            printf("\nPacket ACK'd good with ACK = %d\n", ack_pkt.acknum);
+        }
+        else
+        {
+            ack_pkt.acknum = expected_seq_num;
+            ack_pkt.seqnum = expected_seq_num;
+            ack_pkt.ack = '0';
+            ack_pkt.last = '0';
+            ack_pkt.length = PAYLOAD_SIZE;
+            sendto(send_sockfd, &ack_pkt, sizeof(ack_pkt.length), 0, (struct sockaddr*)&client_addr_to, addr_size);
+            printf("\nPacket ACK'd bad with ACK = %d\n", ack_pkt.acknum);
+        }
+    }
 
     /*
     while((bytes_read = recvfrom(listen_sockfd, output_buffer, sizeof(output_buffer) - 1, 0, (struct sockaddr*)&client_addr_from, &addr_size)) > 0)
