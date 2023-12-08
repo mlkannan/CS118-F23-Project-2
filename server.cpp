@@ -68,7 +68,7 @@ int main() {
         { // GOOD ACK
             last = ack_pkt.last;
             fprintf(fp, "%.*s", recv_len, buffer.payload);
-            expected_seq_num += recv_len;
+            expected_seq_num += 1;
             printf("\n%d", recv_len);
             ack_pkt.acknum = expected_seq_num;
             ack_pkt.seqnum = expected_seq_num;
@@ -82,7 +82,7 @@ int main() {
         }
         else if ( buffer.seqnum < expected_seq_num ) // we can ignore this packet; we have it already
         {
-            ack_pkt.acknum = buffer.seqnum + recv_len;
+            ack_pkt.acknum = buffer.seqnum + 1;
             ack_pkt.seqnum = buffer.seqnum;
             ack_pkt.ack = '1';
             ack_pkt.last = '0';

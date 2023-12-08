@@ -107,15 +107,16 @@ int main(int argc, char *argv[]) {
 
     while ( last != '1' )
     {
-        build_packet(&pkt, ack_num, seq_num, '0', '0', PAYLOAD_SIZE, filestart + (sizeof(char)*seq_num) );
+        build_packet(&pkt, ack_num, seq_num, '0', '0', PAYLOAD_SIZE, filestart + (sizeof(char)*seq_num*PAYLOAD_SIZE) );
         printf("Built a packet size: %lu\n", sizeof(pkt.payload));
         if (sizeof(pkt.payload) < PAYLOAD_SIZE)
         {
             last = '1';
-            build_packet(&pkt, ack_num, seq_num, '0', '1', PAYLOAD_SIZE, filestart + (sizeof(char)*seq_num) );
+            pkt.last = '1';
+            printf("\n\nTHE LAST ONE\n\n");
         }
         printSend(&pkt, 0);
-        ack_num += PAYLOAD_SIZE;
+        ack_num += 1;
 
         sendto(send_sockfd, &pkt, pkt.length, 0, (struct sockaddr*)&server_addr_to, sizeof(server_addr_to));
         printf("Finished sending!\n");
