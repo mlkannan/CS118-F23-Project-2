@@ -65,7 +65,7 @@ int main() {
         printf("size: %lu\n", buffer.length);
 
         if ( buffer.seqnum == expected_seq_num )
-        {
+        { // GOOD ACK
             last = ack_pkt.last;
             fprintf(fp, "%.*s", recv_len, buffer.payload);
             expected_seq_num += recv_len;
@@ -77,6 +77,18 @@ int main() {
             ack_pkt.length = PAYLOAD_SIZE;
             sendto(send_sockfd, &ack_pkt, ack_pkt.length, 0, (struct sockaddr*)&client_addr_to, addr_size);
             printf("\nPacket ACK'd good with ACK = %d\n", ack_pkt.acknum);
+
+            fprintf(fp, "%.*s", sizeof(buffer.length), buffer.payload);
+        }
+        else if ( buffer.seqnum < expected_seq_num ) // we can ignore this packet; we have it already
+        {
+            ack_pkt.acknum = buffer.seqnum + recv_len;
+            ack_pkt.seqnum = buffer.seqnum;
+            ack_pkt.ack = '1';
+            ack_pkt.last = '0';
+            ack_pkt.length = PAYLOAD_SIZE;
+            sendto(send_sockfd, &ack_pkt, sizeof(ack_pkt.length), 0, (struct sockaddr*)&client_addr_to, addr_size);
+            printf("\nDuplicate Packet with ACK = %d\n", ack_pkt.acknum);
         }
         else
         {
