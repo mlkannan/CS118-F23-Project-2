@@ -6,6 +6,8 @@
 
 #include "utils.h"
 
+#define LAST_PKT_SENDS 5
+
 int main() {
     int listen_sockfd, send_sockfd;
     struct sockaddr_in server_addr, client_addr_from, client_addr_to;
@@ -55,30 +57,32 @@ int main() {
 
     printf("File opened\n");
 
-    char last = '0';
-
     int iter = 0;
-    while ( last != '1' )
+    while ( 1 )
     {
         recv_len = recvfrom(listen_sockfd, &buffer, PAYLOAD_SIZE, 0, (struct sockaddr*)&client_addr_from, &addr_size);
-        printf("I got a packet\n");
-        printf("size: %lu\n", buffer.length);
 
         if ( buffer.seqnum == expected_seq_num )
         { // GOOD ACK
-            last = ack_pkt.last;
             fprintf(fp, "%.*s", recv_len, buffer.payload);
             expected_seq_num += 1;
             printf("\n%d", recv_len);
             ack_pkt.acknum = expected_seq_num;
             ack_pkt.seqnum = expected_seq_num;
+            ack_pkt.last = buffer.last;
             ack_pkt.ack = '1';
-            ack_pkt.last = (char)last;
             ack_pkt.length = PAYLOAD_SIZE;
             sendto(send_sockfd, &ack_pkt, ack_pkt.length, 0, (struct sockaddr*)&client_addr_to, addr_size);
-            printf("\nPacket ACK'd good with ACK = %d\n", ack_pkt.acknum);
+            printf("\nGood ACK = %d, LAST = %c\n", ack_pkt.acknum, ack_pkt.last);
 
             fprintf(fp, "%.*s", sizeof(buffer.length), buffer.payload);
+
+            if (ack_pkt.last == '1')
+            {
+                for (int i = 1; i < LAST_PKT_SENDS; i++ )
+                    sendto(send_sockfd, &ack_pkt, ack_pkt.length, 0, (struct sockaddr*)&client_addr_to, addr_size);
+                break;
+            }
         }
         else if ( buffer.seqnum < expected_seq_num ) // we can ignore this packet; we have it already
         {
@@ -111,6 +115,7 @@ int main() {
     }
     */
     
+    printf("Done receiving");
 
     fclose(fp);
     close(listen_sockfd);

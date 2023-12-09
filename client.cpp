@@ -105,16 +105,24 @@ int main(int argc, char *argv[]) {
 
     int iter = 0;
 
-    while ( last != '1' )
+    int total_packets = ( (filesize + PAYLOAD_SIZE - 1) / PAYLOAD_SIZE ); // 
+    printf("total packets = %d\n\n", total_packets );
+    wait((int *)5);
+
+    while ( 1 )
     {
-        build_packet(&pkt, ack_num, seq_num, '0', '0', PAYLOAD_SIZE, filestart + (sizeof(char)*seq_num*PAYLOAD_SIZE) );
-        printf("Built a packet size: %lu\n", sizeof(pkt.payload));
-        if (sizeof(pkt.payload) < PAYLOAD_SIZE)
+        if ( total_packets == seq_num)
         {
             last = '1';
-            pkt.last = '1';
-            printf("\n\nTHE LAST ONE\n\n");
         }
+        else if ( total_packets < seq_num && last == '1' )
+        {
+            printf("I'M DONE \n");
+            break;
+        }
+        build_packet(&pkt, ack_num, seq_num, last, ack, PAYLOAD_SIZE, filestart + (sizeof(char)*seq_num*PAYLOAD_SIZE) );
+
+        printf("Built a packet size: %lu\n", sizeof(pkt.payload));
         printSend(&pkt, 0);
         ack_num += 1;
 
@@ -152,7 +160,6 @@ int main(int argc, char *argv[]) {
         else if ( ack_pkt.acknum == ack_num )
         {
             // SUCCESS
-            printf("Received ACK pkt size: %lu\n", sizeof(ack_pkt.payload));
             printf("Success, ACK = %d\n", ack_num);
             seq_num = ack_num; // increase SEQ
         }
@@ -165,6 +172,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    printf("DONE TRANSMITTING PACKETS");
     fclose(fp);
     close(listen_sockfd);
     close(send_sockfd);
