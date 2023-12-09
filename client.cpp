@@ -120,13 +120,13 @@ int main(int argc, char *argv[]) {
             printf("I'M DONE \n");
             break;
         }
-        build_packet(&pkt, ack_num, seq_num, last, ack, PAYLOAD_SIZE, filestart + (sizeof(char)*seq_num*PAYLOAD_SIZE) );
+        build_packet(&pkt, ack_num, seq_num, last, ack, PAYLOAD_SIZE, filestart + (seq_num*PAYLOAD_SIZE) );
 
         printf("Built a packet size: %lu\n", sizeof(pkt.payload));
         printSend(&pkt, 0);
         ack_num += 1;
 
-        sendto(send_sockfd, &pkt, pkt.length, 0, (struct sockaddr*)&server_addr_to, sizeof(server_addr_to));
+        sendto(send_sockfd, &pkt, sizeof(pkt), 0, (struct sockaddr*)&server_addr_to, sizeof(server_addr_to));
         printf("Finished sending!\n");
 
         // int success = recvfrom(listen_sockfd, &ack_pkt, sizeof(&ack_pkt), 0, (struct sockaddr*)&server_addr_from, &addr_size); 
@@ -150,7 +150,7 @@ int main(int argc, char *argv[]) {
         //     last = '0';
         //     ack_num = seq_num;
         // }
-        if ( recvfrom(listen_sockfd, &ack_pkt, sizeof(&ack_pkt), 0, (struct sockaddr*)&server_addr_from, &addr_size) < 0 )
+        if ( recvfrom(listen_sockfd, &ack_pkt, sizeof(ack_pkt), 0, (struct sockaddr*)&server_addr_from, &addr_size) < 0 )
         {
             // TIMEOUT
             printf("Timeout\n");

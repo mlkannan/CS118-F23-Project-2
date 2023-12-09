@@ -60,11 +60,10 @@ int main() {
     int iter = 0;
     while ( 1 )
     {
-        recv_len = recvfrom(listen_sockfd, &buffer, PAYLOAD_SIZE, 0, (struct sockaddr*)&client_addr_from, &addr_size);
+        recv_len = recvfrom(listen_sockfd, &buffer, sizeof(buffer), 0, (struct sockaddr*)&client_addr_from, &addr_size);
 
         if ( buffer.seqnum == expected_seq_num )
         { // GOOD ACK
-            fprintf(fp, "%.*s", recv_len, buffer.payload);
             expected_seq_num += 1;
             printf("\n%d", recv_len);
             ack_pkt.acknum = expected_seq_num;
@@ -75,7 +74,7 @@ int main() {
             sendto(send_sockfd, &ack_pkt, ack_pkt.length, 0, (struct sockaddr*)&client_addr_to, addr_size);
             printf("\nGood ACK = %d, LAST = %c\n", ack_pkt.acknum, ack_pkt.last);
 
-            fprintf(fp, "%.*s", sizeof(buffer.length), buffer.payload);
+            fprintf(fp, "%.*s", recv_len, buffer.payload);
 
             if (ack_pkt.last == '1')
             {
