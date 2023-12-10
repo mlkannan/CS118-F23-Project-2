@@ -124,7 +124,7 @@ int main(int argc, char *argv[]) {
             printf("Finished sending!\n");
 
             packets_sent++;
-            seq_num++;
+            // seq_num++;
 
             if (last == '1') {
                 break;
