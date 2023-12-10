@@ -172,7 +172,7 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        if (last == '1') {
+        if (seq_num > total_packets) {
             // If it's the last packet, break out of the main loop
             break;
         }
