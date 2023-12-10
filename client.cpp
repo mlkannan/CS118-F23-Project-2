@@ -111,7 +111,10 @@ int main(int argc, char *argv[]) {
     while (1) {
         int packets_sent = 0;
 
-        for (int i = 0; i < current_batch_size && seq_num < total_packets; i++) {
+        for (int i = 0; i < current_batch_size && seq_num <= total_packets; i++) {
+            if (total_packets == seq_num) {
+                last = '1';
+            }
             build_packet(&pkt, ack_num, seq_num, last, ack, PAYLOAD_SIZE, filestart + (seq_num * PAYLOAD_SIZE));
             printf("Built a packet size: %lu\n", sizeof(pkt.payload));
             printSend(&pkt, 0);
