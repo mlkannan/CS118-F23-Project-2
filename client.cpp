@@ -106,16 +106,19 @@ int main(int argc, char *argv[]) {
     int total_packets = ( (filesize + PAYLOAD_SIZE - 1) / PAYLOAD_SIZE ); // 
     printf("total packets = %d\n\n", total_packets );
 
-    int current_batch_size = INITIAL_BATCH_SIZE;
+    // int current_batch_size = INITIAL_BATCH_SIZE;
+    int current_batch_size = 5;
 
     while (1) {
         int packets_sent = 0;
 
-        for (int i = 0; i < current_batch_size && seq_num <= total_packets; i++) {
-            if (total_packets == seq_num) {
+        for (int i = 0; i < current_batch_size; i++)
+        {
+            if ( total_packets == seq_num + packets_sent - 1 ) {
                 last = '1';
-            }
-            build_packet(&pkt, ack_num, seq_num, last, ack, PAYLOAD_SIZE, filestart + (seq_num * PAYLOAD_SIZE));
+            } 
+
+            build_packet(&pkt, ack_num, seq_num + packets_sent, last, ack, PAYLOAD_SIZE, filestart + (( seq_num + packets_sent ) * PAYLOAD_SIZE));
             printf("Built a packet size: %lu\n", sizeof(pkt.payload));
             printSend(&pkt, 0);
             ack_num += 1;
@@ -126,50 +129,34 @@ int main(int argc, char *argv[]) {
             packets_sent++;
             // seq_num++;
 
-            if (last == '1') {
+            // if (last == '1') {
+            //     break;
+            // }
+            if (last == '1')
+            {
                 break;
             }
         }
 
-        if (last == '1') {
-            if (recvfrom(listen_sockfd, &ack_pkt, sizeof(ack_pkt), 0, (struct sockaddr *)&server_addr_from, &addr_size) < 0) {
-                // TIMEOUT
-                printf("Timeout while waiting for last ACK\n");
-                last = '0';              
-                ack_num = seq_num - packets_sent;
-            } else if (ack_pkt.acknum == ack_num) 
-            {
-                // SUCCESS
-                printf("Success, ACK = %d\n", ack_num);
-                seq_num = ack_num; // increase SEQ
-                last = '0';
-            } 
-            else {
-                // INCORRECT ACK -> ACK < EXP_ACK
-                printf("Bad ACK, ACK = %d\n", ack_num);
-                ack_num = seq_num - packets_sent;
-                last = '0';                       
-            }
-        } else {
-            if (recvfrom(listen_sockfd, &ack_pkt, sizeof(ack_pkt), 0, (struct sockaddr *)&server_addr_from, &addr_size) < 0) {
-                // TIMEOUT
-                printf("Timeout while waiting for ACK\n");
-                last = '0';
-                ack_num = seq_num;
-            } 
-            else if ( ack_pkt.acknum == ack_num ) 
-            {
-                // SUCCESS
-                printf("Success, ACK = %d\n", ack_num);
-                seq_num = ack_num; // increase SEQ
-            } 
-            else 
-            {
-                // INCORRECT ACK -> ACK < EXP_ACK
-                printf("Bad ACK, ACK = %d\n", ack_num);
-                ack_num = seq_num;
-                last = '0';
-            }
+        if (recvfrom(listen_sockfd, &ack_pkt, sizeof(ack_pkt), 0, (struct sockaddr *)&server_addr_from, &addr_size) < 0)
+        {
+            // TIMEOUT
+            printf("Timeout while waiting for ACK\n");
+            last = '0';
+            ack_num = seq_num;
+        } 
+        else if ( ack_pkt.acknum == ack_num ) 
+        {
+            // SUCCESS
+            printf("Success, ACK = %d\n", ack_num);
+            seq_num = ack_num; // increase SEQ
+        } 
+        else 
+        {
+            // INCORRECT ACK -> ACK < EXP_ACK
+            printf("Bad ACK, ACK = %d\n", ack_num);
+            ack_num = seq_num;
+            last = '0';
         }
 
         if (seq_num > total_packets) {

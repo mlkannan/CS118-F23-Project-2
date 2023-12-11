@@ -58,39 +58,56 @@ int main() {
     FILE *fp = fopen("output.txt", "wb");
 
     // TODO: Receive file from the client and save it as output.txt
-    int current_batch_size = INITIAL_BATCH_SIZE;
+    // int current_batch_size = INITIAL_BATCH_SIZE;
+    int current_batch_size = 5;
+    int last_pkt_seq = -1;
+    struct packet packet_buffer[MAX_BATCH_SIZE];
+    memset(&packet_buffer, 0, sizeof(packet_buffer));
+    char last = '0';
+    // expected sequence number is equivalent to min sequence number
 
     printf("File opened\n");
 
     while (1) {
         int packets_received = 0;
 
-        for (int i = 0; i < current_batch_size; i++) {
+        while (1) {
             recv_len = recvfrom(listen_sockfd, &buffer, sizeof(buffer), 0, (struct sockaddr*)&client_addr_from, &addr_size);
 
-            if ( buffer.seqnum == expected_seq_num ) 
+            if ( buffer.seqnum >= expected_seq_num ) 
             {// GOOD ACK
-                expected_seq_num += 1;
-                fprintf(fp, "%.*s", recv_len, buffer.payload);
+                // expected_seq_num += 1;
+                // fprintf(fp, "%.*s", recv_len, buffer.payload);
 
-                ack_pkt.acknum = expected_seq_num;
-                ack_pkt.seqnum = expected_seq_num;
-                ack_pkt.ack = '1';
-                ack_pkt.last = buffer.last;
-                ack_pkt.length = PAYLOAD_SIZE;
+                // ack_pkt.acknum = expected_seq_num;
+                // ack_pkt.seqnum = expected_seq_num;
+                // ack_pkt.ack = '1';
+                // ack_pkt.last = buffer.last;
+                // ack_pkt.length = PAYLOAD_SIZE;
 
-                sendto(send_sockfd, &ack_pkt, sizeof(ack_pkt), 0, (struct sockaddr*)&client_addr_to, addr_size);
-                printf("\nGood ACK = %d, LAST = %c\n", ack_pkt.acknum, ack_pkt.last);
-
-                if (ack_pkt.last == '1')
+                // sendto(send_sockfd, &ack_pkt, sizeof(ack_pkt), 0, (struct sockaddr*)&client_addr_to, addr_size);
+                // printf("\nGood ACK = %d, LAST = %c\n", ack_pkt.acknum, ack_pkt.last);
+                if ( packet_buffer[buffer.seqnum - expected_seq_num].length == 0 ) 
                 {
-                for (int i = 1; i < LAST_PKT_SENDS; i++ )
-                    sendto(send_sockfd, &ack_pkt, ack_pkt.length, 0, (struct sockaddr*)&client_addr_to, addr_size);
-                    break;
-                }
+                    packet_buffer[buffer.seqnum - expected_seq_num] = buffer;
+                    packets_received++;
 
-                packets_received++;
-            } else {
+                    if ( buffer.last == '1' )
+                    {
+                        last_pkt_seq = buffer.seqnum;
+                        last = '1';
+                    }
+                }
+                
+                // if (ack_pkt.last == '1')
+                // {
+                //     for (int i = 1; i < LAST_PKT_SENDS; i++ )
+                //         sendto(send_sockfd, &ack_pkt, ack_pkt.length, 0, (struct sockaddr*)&client_addr_to, addr_size);
+                //         break;
+                // }
+            } 
+            else 
+            {
                 // Handle duplicate or out-of-order packets
                 ack_pkt.acknum = expected_seq_num;
                 ack_pkt.seqnum = expected_seq_num;
@@ -101,27 +118,50 @@ int main() {
                 printf("\nDuplicate Packet with ACK = %d\n", ack_pkt.acknum);
             }
 
-            if (buffer.last == '1') {
+            // if (buffer.last == '1') {
+            //     break;
+            // }
+            if ( packets_received == current_batch_size || packets_received == last_pkt_seq - expected_seq_num )
                 break;
-            }
         }
 
-        if (packets_received == current_batch_size) {
-            if (current_batch_size * AIMD_INCREASE_FACTOR <= MAX_BATCH_SIZE) {
-                current_batch_size *= AIMD_INCREASE_FACTOR;
-            }
-        } 
-        else 
+        for ( int i = 0; i < packets_received; i++ )
         {
-            current_batch_size *= AIMD_DECREASE_FACTOR;
-            if (current_batch_size < INITIAL_BATCH_SIZE) {
-                current_batch_size = INITIAL_BATCH_SIZE;
-            }
+            fprintf(fp, "%.*s", packet_buffer[i].length, packet_buffer[i].payload);
+            memset(&packet_buffer[i], 0, sizeof(packet_buffer[i]));
         }
+        expected_seq_num += packets_received;
+        ack_pkt.acknum = expected_seq_num;
+        ack_pkt.seqnum = expected_seq_num;
+        ack_pkt.ack = '1';
+        ack_pkt.last = last;
+        ack_pkt.length = PAYLOAD_SIZE;
 
-        if (buffer.last == '1') {
+        sendto(send_sockfd, &ack_pkt, sizeof(ack_pkt), 0, (struct sockaddr*)&client_addr_to, addr_size);
+        printf("\nGood ACK = %d, LAST = %c\n", ack_pkt.acknum, ack_pkt.last);
+
+        if ( last == '1' )
+        {
+            for (int i = 1; i < LAST_PKT_SENDS; i++ )
+                sendto(send_sockfd, &ack_pkt, ack_pkt.length, 0, (struct sockaddr*)&client_addr_to, addr_size);
             break;
         }
+        // if (packets_received == current_batch_size) {
+        //     if (current_batch_size * AIMD_INCREASE_FACTOR <= MAX_BATCH_SIZE) {
+        //         current_batch_size *= AIMD_INCREASE_FACTOR;
+        //     }
+        // } 
+        // else 
+        // {
+        //     current_batch_size *= AIMD_DECREASE_FACTOR;
+        //     if (current_batch_size < INITIAL_BATCH_SIZE) {
+        //         current_batch_size = INITIAL_BATCH_SIZE;
+        //     }
+        // }
+
+        // if (buffer.last == '1') {
+        //     break;
+        // }
     }
 
     printf("Done receiving");
