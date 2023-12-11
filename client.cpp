@@ -107,24 +107,28 @@ int main(int argc, char *argv[]) {
     // TODO: printf("total packets = %d\n\n", total_packets );
 
     // int current_batch_size = INITIAL_BATCH_SIZE;
-    int current_batch_size = 10;
+    int current_batch_size = 8;
+    int cwnd = 1;
+    int ssthresh = MAX_BATCH_SIZE;
+    int dup_acks = 0;
 
     while (1) {
         int packets_sent = 0;
 
-        for (int i = 0; i < current_batch_size; i++)
+        for (int i = 0; i < cwnd; i++)
         {
             if ( total_packets == seq_num + packets_sent - 1 ) {
                 last = '1';
             } 
 
-            build_packet(&pkt, ack_num, seq_num + packets_sent, last, ack, PAYLOAD_SIZE, filestart + (( seq_num + packets_sent ) * PAYLOAD_SIZE));
+            build_packet(&pkt, seq_num, cwnd + packets_sent, last, ack, PAYLOAD_SIZE, filestart + (( seq_num + packets_sent ) * PAYLOAD_SIZE));
             // printf("Built a packet size: %lu\n", sizeof(pkt.payload));
             printSend(&pkt, 0);
             ack_num += 1;
 
             sendto(send_sockfd, &pkt, sizeof(pkt), 0, (struct sockaddr*)&server_addr_to, sizeof(server_addr_to));
             printf("Finished sending!\n");
+            usleep(250);
             // usleep(250);
             packets_sent++;
             // seq_num++;
@@ -144,12 +148,18 @@ int main(int argc, char *argv[]) {
             printf("Timeout while waiting for ACK\n");
             last = '0';
             ack_num = seq_num;
+            // dup_acks++;
+            if ( cwnd >= 1 )
+                cwnd = cwnd * AIMD_DECREASE_FACTOR;
+            else
+                cwnd = 1;
         } 
         else if ( ack_pkt.acknum == ack_num ) 
         {
             // SUCCESS
             printf("Success, ACK = %d\n", ack_num);
             seq_num = ack_num; // increase SEQ
+            cwnd = AIMD_INCREASE_FACTOR * cwnd;
         } 
         else 
         {
@@ -159,7 +169,7 @@ int main(int argc, char *argv[]) {
             last = '0';
         }
 
-        if (seq_num > total_packets || last == '1') {
+        if (seq_num > total_packets && last == '1') {
             // If it's the last packet, break out of the main loop
             break;
         }

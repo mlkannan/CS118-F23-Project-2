@@ -59,7 +59,8 @@ int main() {
 
     // TODO: Receive file from the client and save it as output.txt
     // int current_batch_size = INITIAL_BATCH_SIZE;
-    int current_batch_size = 10;
+    int current_batch_size = 0;
+    int cwnd = 1;
     int last_pkt_seq = -100;
     struct packet packet_buffer[MAX_BATCH_SIZE];
     memset(&packet_buffer, 0, sizeof(packet_buffer));
@@ -72,7 +73,9 @@ int main() {
         int packets_received = 0;
 
         while (1) {
+            printf("waiting on a packet\n");
             recv_len = recvfrom(listen_sockfd, &buffer, sizeof(buffer), 0, (struct sockaddr*)&client_addr_from, &addr_size);
+            cwnd = buffer.acknum;
 
             if ( buffer.seqnum >= expected_seq_num ) 
             {// GOOD ACK
@@ -87,10 +90,12 @@ int main() {
 
                 // sendto(send_sockfd, &ack_pkt, sizeof(ack_pkt), 0, (struct sockaddr*)&client_addr_to, addr_size);
                 // printf("\nGood ACK = %d, LAST = %c\n", ack_pkt.acknum, ack_pkt.last);
+
                 if ( packet_buffer[buffer.seqnum - expected_seq_num].length == 0 ) 
                 {
                     packet_buffer[buffer.seqnum - expected_seq_num] = buffer;
                     packets_received++;
+                    printf("Got packet num%D\n", buffer.seqnum);
 
                     if ( buffer.last == '1' )
                     {
@@ -114,10 +119,12 @@ int main() {
             // if (buffer.last == '1') {
             //     break;
             // }
-            if ( packets_received == current_batch_size || packets_received == last_pkt_seq - expected_seq_num ) 
+            printf("pkt recv = %d, cwnd = %d\n", packets_received, cwnd);
+            if ( packets_received == cwnd || packets_received == last_pkt_seq - expected_seq_num ) 
+            {
                 break;
+            }
         }
-
         for ( int i = 0; i < packets_received; i++ )
         {
             // if ( last == '1' )
@@ -125,11 +132,13 @@ int main() {
             //     printf("%.s", sizeof(packet_buffer[i].payload), packet_buffer[i].payload);
             //     printf("yeah\n");
             // }
+            printf("\n\nLoading %d Packets into output\n\n\n", packets_received);
             fprintf(fp, "%.*s", packet_buffer[i].length, packet_buffer[i].payload);
             usleep(250);
             memset(&packet_buffer[i], 0, sizeof(packet_buffer[i]));
             printf("Buffer cleared\n");
         }
+
         expected_seq_num += packets_received;
         ack_pkt.acknum = expected_seq_num;
         ack_pkt.seqnum = expected_seq_num;
@@ -144,6 +153,7 @@ int main() {
         {
             for (int i = 1; i < LAST_PKT_SENDS; i++ )
                 sendto(send_sockfd, &ack_pkt, ack_pkt.length, 0, (struct sockaddr*)&client_addr_to, addr_size);
+            usleep(500);
             break;
         }
         // if (packets_received == current_batch_size) {
