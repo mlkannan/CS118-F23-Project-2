@@ -125,7 +125,7 @@ int main(int argc, char *argv[]) {
 
             sendto(send_sockfd, &pkt, sizeof(pkt), 0, (struct sockaddr*)&server_addr_to, sizeof(server_addr_to));
             printf("Finished sending!\n");
-
+            // usleep(250);
             packets_sent++;
             // seq_num++;
 
@@ -159,7 +159,7 @@ int main(int argc, char *argv[]) {
             last = '0';
         }
 
-        if (seq_num > total_packets) {
+        if (seq_num > total_packets || last == '1') {
             // If it's the last packet, break out of the main loop
             break;
         }

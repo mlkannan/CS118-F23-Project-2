@@ -60,7 +60,7 @@ int main() {
     // TODO: Receive file from the client and save it as output.txt
     // int current_batch_size = INITIAL_BATCH_SIZE;
     int current_batch_size = 5;
-    int last_pkt_seq = -1;
+    int last_pkt_seq = -100;
     struct packet packet_buffer[MAX_BATCH_SIZE];
     memset(&packet_buffer, 0, sizeof(packet_buffer));
     char last = '0';
@@ -121,14 +121,19 @@ int main() {
             // if (buffer.last == '1') {
             //     break;
             // }
-            if ( packets_received == current_batch_size || packets_received == last_pkt_seq - expected_seq_num )
+            if ( packets_received == current_batch_size || packets_received == last_pkt_seq - expected_seq_num ) 
                 break;
         }
 
         for ( int i = 0; i < packets_received; i++ )
         {
-            fprintf(fp, "%.*s", packet_buffer[i].length, packet_buffer[i].payload);
+            // if ( last == '1' )
+            // {
+            //     printf("%.s", packet_buffer[i].payload, packet_buffer[i].payload);
+            // }
+            fprintf(fp, "%.*s", sizeof(packet_buffer[i].payload), packet_buffer[i].payload);
             memset(&packet_buffer[i], 0, sizeof(packet_buffer[i]));
+            printf("Buffer cleared\n");
         }
         expected_seq_num += packets_received;
         ack_pkt.acknum = expected_seq_num;
