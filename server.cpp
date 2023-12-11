@@ -59,7 +59,7 @@ int main() {
 
     // TODO: Receive file from the client and save it as output.txt
     // int current_batch_size = INITIAL_BATCH_SIZE;
-    int current_batch_size = 5;
+    int current_batch_size = 10;
     int last_pkt_seq = -100;
     struct packet packet_buffer[MAX_BATCH_SIZE];
     memset(&packet_buffer, 0, sizeof(packet_buffer));
@@ -98,13 +98,6 @@ int main() {
                         last = '1';
                     }
                 }
-                
-                // if (ack_pkt.last == '1')
-                // {
-                //     for (int i = 1; i < LAST_PKT_SENDS; i++ )
-                //         sendto(send_sockfd, &ack_pkt, ack_pkt.length, 0, (struct sockaddr*)&client_addr_to, addr_size);
-                //         break;
-                // }
             } 
             else 
             {
@@ -129,9 +122,11 @@ int main() {
         {
             // if ( last == '1' )
             // {
-            //     printf("%.s", packet_buffer[i].payload, packet_buffer[i].payload);
+            //     printf("%.s", sizeof(packet_buffer[i].payload), packet_buffer[i].payload);
+            //     printf("yeah\n");
             // }
-            fprintf(fp, "%.*s", sizeof(packet_buffer[i].payload), packet_buffer[i].payload);
+            fprintf(fp, "%.*s", packet_buffer[i].length, packet_buffer[i].payload);
+            usleep(250);
             memset(&packet_buffer[i], 0, sizeof(packet_buffer[i]));
             printf("Buffer cleared\n");
         }

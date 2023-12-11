@@ -104,10 +104,10 @@ int main(int argc, char *argv[]) {
     }
 
     int total_packets = ( (filesize + PAYLOAD_SIZE - 1) / PAYLOAD_SIZE ); // 
-    printf("total packets = %d\n\n", total_packets );
+    // TODO: printf("total packets = %d\n\n", total_packets );
 
     // int current_batch_size = INITIAL_BATCH_SIZE;
-    int current_batch_size = 5;
+    int current_batch_size = 10;
 
     while (1) {
         int packets_sent = 0;
@@ -119,7 +119,7 @@ int main(int argc, char *argv[]) {
             } 
 
             build_packet(&pkt, ack_num, seq_num + packets_sent, last, ack, PAYLOAD_SIZE, filestart + (( seq_num + packets_sent ) * PAYLOAD_SIZE));
-            printf("Built a packet size: %lu\n", sizeof(pkt.payload));
+            // printf("Built a packet size: %lu\n", sizeof(pkt.payload));
             printSend(&pkt, 0);
             ack_num += 1;
 

@@ -2,18 +2,6 @@ START
 
 my file
 my file contents 
-my file
-my file contents 
-my file
-my file contents 
-my file
-my file contents 
-my file
-my file contents 
-my file
-my file contents 
-my file
-my file contents 
 
 
 END
