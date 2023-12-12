@@ -74,17 +74,17 @@ int main() {
 
     while (1)
     {
-        printf("waiting on a packet\n");
+        // printf("waiting on a packet\n");
         recv_len = recvfrom(listen_sockfd, &buffer, sizeof(buffer), 0, (struct sockaddr*)&client_addr_from, &addr_size);
         // cwnd = buffer.acknum;
 
         // If I don't have this packet yet, load it into packet buffer
-        printf("recv packet seq = %d\n", buffer.seqnum);
+        // printf("recv packet seq = %d\n", buffer.seqnum);
         if ( packet_buffer[buffer.seqnum].length == 0 && recv_len > 0 )
         {
             packet_buffer[buffer.seqnum] = buffer;
-            printf("yeha");
-            printf("%d\n", packet_buffer[buffer.seqnum].length);
+            // printf("yeha");
+            // printf("%d\n", packet_buffer[buffer.seqnum].length);
             packets_received++;
         }
         // if ( packets_received == buffer.seqnum + 1 && last_seq_loaded != buffer.seqnum )
@@ -99,16 +99,16 @@ int main() {
         if ( buffer.seqnum == expected_seq_num && packet_buffer[buffer.seqnum].length > 0 ) // else: leave exp_seq unchanged
         {
             expected_seq_num = buffer.seqnum + 1;
-            printf("Good ack\n");
+            // printf("Good ack\n");
         }
         else
         {
-            printf("Bad ack\n");
+            // printf("Bad ack\n");
         }
 
         if ( buffer.last == '1' )
         {
-            printf("this is the last one");
+            // printf("this is the last one");
         }
         
         ack_pkt.acknum = expected_seq_num;
@@ -118,8 +118,8 @@ int main() {
         ack_pkt.length = PAYLOAD_SIZE;
 
         sendto(send_sockfd, &ack_pkt, sizeof(ack_pkt), 0, (struct sockaddr *)&client_addr_to, addr_size);
-        printf("sent ack\n");
-        printSend(&ack_pkt, false);
+        // printf("sent ack\n");
+        // printSend(&ack_pkt, false);
 
         // if ( buffer.last == '1' /*&& last_seq_loaded == expected_seq_num*/ )
         //     break;

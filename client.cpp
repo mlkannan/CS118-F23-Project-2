@@ -120,18 +120,19 @@ int main(int argc, char *argv[]) {
     bool fast_retransmit = false;
 
     while (1) {
-        printf("im trying\n");
-
+        printf("\n\nstarting over\n");
         // send out ALL remaining packets in cwnd
         while ( packets_sent < (int)cwnd && seq_num < total_packets )
         {
             if ( seq_num + 1 == total_packets )
             {
-                printf("build the last one\n");
+                // printf("build the last one\n");
                 last = '1';
             }
-            printf("Send packet %d\n", seq_num + packets_sent);
+            // printf("Send packet %d\n", seq_num + packets_sent);
             build_packet(&pkt, seq_num + packets_sent, ack_num, last, ack, PAYLOAD_SIZE, filestart + ((seq_num + packets_sent) * PAYLOAD_SIZE));
+            printSend(&pkt, false);
+            printf("cwnd = %.6f\n", cwnd);
             sendto(send_sockfd, &pkt, sizeof(pkt), 0, (struct sockaddr *)&server_addr_to, addr_size);
             packets_sent++;
         }
@@ -174,17 +175,18 @@ int main(int argc, char *argv[]) {
             cwnd = 1; 
 
             // TODO: WHEN SUBMITTING TO GRADESCOPE USE THIS
-            ssthresh = std::max( (int)(cwnd/2), 2);
+            // ssthresh = std::max( (int)(cwnd/2), 2);
 
             // TODO: WHEN RUNNING LOCALLY, DO THIS
-            // ssthresh = fmax( (int)(cwnd/2), 2);
+            ssthresh = fmax( (int)(cwnd/2), 2);
             // replace with 
             packets_sent = 0; // reset cwnd buffer
         } 
-        else if ( ack_pkt.acknum == ack_num ) // GOOD ACK
+        else if ( ack_pkt.acknum - 1 == seq_num ) // GOOD ACK
         {
             // SUCCESS
-            printf("Success, ACK = %d\n", ack_num);
+            printRecv(&ack_pkt);
+            // printf("Success, ACK = %d\n", ack_num);
             // seq_num = ack_num; // increase SEQ
             // cwnd = AIMD_INCREASE_FACTOR * cwnd;
 
@@ -204,17 +206,22 @@ int main(int argc, char *argv[]) {
                     cwnd += (1/cwnd);
                     // cwnd += (float)(1/)
                 }
+                printf("cwnd changed to %.6f\n", cwnd);
             }
             // packets_sent -= (ack_pkt.acknum - seq_num);
             packets_sent = 0;
             seq_num = ack_pkt.acknum;
             ack_num = ack_pkt.acknum;
             dup_acks = 0;
+
+            if ( ack_pkt.last == '1' )
+                last = '1';
         } 
         else // BAD ACK
         {
             // // INCORRECT ACK -> ACK < EXP_ACK
-            printf("Bad ACK, ACK = %d\n", ack_num);
+            // printf("Bad ACK, ACK = %d\n", ack_num);
+            printRecv(&ack_pkt);
             last = '0';
             seq_num = ack_pkt.acknum;
             ack_num = ack_pkt.acknum;
@@ -224,10 +231,10 @@ int main(int argc, char *argv[]) {
                 fast_retransmit = true;
 
                 // TODO: WHEN SUBMITTING TO GRADESCOPE USE THIS
-                ssthresh = std::max( (int)(cwnd/2), 2);
+                // ssthresh = std::max( (int)(cwnd/2), 2);
 
                 // TODO: WHEN RUNNING LOCALLY, DO THIS
-                //ssthresh = fmax( (int)(cwnd/2), 2);
+                ssthresh = fmax( (int)(cwnd/2), 2);
                 cwnd = ssthresh + 3;
                 build_packet(&pkt, seq_num, ack_num, last, ack, PAYLOAD_SIZE, filestart + (seq_num * PAYLOAD_SIZE));
                 sendto(send_sockfd, &pkt, sizeof(pkt), 0, (struct sockaddr *)&server_addr_to, addr_size);
@@ -243,9 +250,10 @@ int main(int argc, char *argv[]) {
             // If it's the last packet, break out of the main loop
             break;
         }
+        // usleep(250000);
     }
 
-    printf("DONE TRANSMITTING PACKETS");
+    // printf("DONE TRANSMITTING PACKETS");
     fclose(fp);
     close(listen_sockfd);
     close(send_sockfd);
