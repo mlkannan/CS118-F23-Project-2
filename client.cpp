@@ -4,7 +4,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
-// #include <math.h>
+#include <math.h>
 
 #include "utils.h"
 
@@ -174,10 +174,10 @@ int main(int argc, char *argv[]) {
             cwnd = 1; 
 
             // TODO: WHEN SUBMITTING TO GRADESCOPE USE THIS
-                //ssthresh = max( (int)(cwnd/2), 2);
+            ssthresh = std::max( (int)(cwnd/2), 2);
 
             // TODO: WHEN RUNNING LOCALLY, DO THIS
-            ssthresh = fmax( (int)(cwnd/2), 2);
+            // ssthresh = fmax( (int)(cwnd/2), 2);
             // replace with 
             packets_sent = 0; // reset cwnd buffer
         } 
@@ -224,10 +224,10 @@ int main(int argc, char *argv[]) {
                 fast_retransmit = true;
 
                 // TODO: WHEN SUBMITTING TO GRADESCOPE USE THIS
-                //ssthresh = max( (int)(cwnd/2), 2);
+                ssthresh = std::max( (int)(cwnd/2), 2);
 
                 // TODO: WHEN RUNNING LOCALLY, DO THIS
-                ssthresh = fmax( (int)(cwnd/2), 2);
+                //ssthresh = fmax( (int)(cwnd/2), 2);
                 cwnd = ssthresh + 3;
                 build_packet(&pkt, seq_num, ack_num, last, ack, PAYLOAD_SIZE, filestart + (seq_num * PAYLOAD_SIZE));
                 sendto(send_sockfd, &pkt, sizeof(pkt), 0, (struct sockaddr *)&server_addr_to, addr_size);
