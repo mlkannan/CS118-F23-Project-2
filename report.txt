@@ -1,2 +1,9 @@
-Please concisely describe your congestion control scheme here.
-No need to be verbose, brief descriptions/bullet points are preferred.
+We implemented AIMD to improve congestion control. 
+
+Inside the main loop, the client handles ACK packets and adjusts the congestion window based on AIMD
+- We initialize the window size and slow start threshold
+- The window size resets to one if the ACK timesout
+- The window increases by one per RTT if the ACK is good
+- The window size decreases by half of the packet is lost/the ACK is bad
+- If 3 duplicates ACKs are received, we enter fast retransmit by setting fast_retransmit = true
+    - For fast transmit we resend the lost packet and reduce the window size to avoid network congestion
