@@ -4,6 +4,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
+// #include <math.h>
 
 #include "utils.h"
 
@@ -12,6 +13,7 @@
 #define AIMD_INCREASE_FACTOR 2
 #define AIMD_DECREASE_FACTOR 0.5
 
+#define INITIAL_SSTHRESH 6
 
 int main(int argc, char *argv[]) {
     int listen_sockfd, send_sockfd;
@@ -96,6 +98,8 @@ int main(int argc, char *argv[]) {
     tv.tv_sec = TIMEOUT;
     tv.tv_usec = 0;
 
+    int num_unacked = 0;
+
     if (int n = setsockopt(listen_sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0 )
     {
         printf("failed to set timeout interval :(\n");
@@ -107,69 +111,135 @@ int main(int argc, char *argv[]) {
     // TODO: printf("total packets = %d\n\n", total_packets );
 
     // int current_batch_size = INITIAL_BATCH_SIZE;
-    int current_batch_size = 8;
-    int cwnd = 1;
-    int ssthresh = MAX_BATCH_SIZE;
+    // int current_batch_size = 8;
+    float cwnd = INITIAL_BATCH_SIZE;
+    int ssthresh = INITIAL_SSTHRESH;
     int dup_acks = 0;
+    int packets_sent = 0;
+
+    bool fast_retransmit = false;
 
     while (1) {
-        int packets_sent = 0;
+        printf("im trying\n");
 
-        for (int i = 0; i < cwnd; i++)
+        // send out ALL remaining packets in cwnd
+        while ( packets_sent < (int)cwnd && seq_num < total_packets )
         {
-            if ( total_packets == seq_num + packets_sent - 1 ) {
-                last = '1';
-            } 
-
-            build_packet(&pkt, seq_num, cwnd + packets_sent, last, ack, PAYLOAD_SIZE, filestart + (( seq_num + packets_sent ) * PAYLOAD_SIZE));
-            // printf("Built a packet size: %lu\n", sizeof(pkt.payload));
-            printSend(&pkt, 0);
-            ack_num += 1;
-
-            sendto(send_sockfd, &pkt, sizeof(pkt), 0, (struct sockaddr*)&server_addr_to, sizeof(server_addr_to));
-            printf("Finished sending!\n");
-            usleep(250);
-            // usleep(250);
-            packets_sent++;
-            // seq_num++;
-
-            // if (last == '1') {
-            //     break;
-            // }
-            if (last == '1')
+            if ( seq_num + 1 == total_packets )
             {
-                break;
+                printf("build the last one\n");
+                last = '1';
             }
+            printf("Send packet %d\n", seq_num + packets_sent);
+            build_packet(&pkt, seq_num + packets_sent, ack_num, last, ack, PAYLOAD_SIZE, filestart + ((seq_num + packets_sent) * PAYLOAD_SIZE));
+            sendto(send_sockfd, &pkt, sizeof(pkt), 0, (struct sockaddr *)&server_addr_to, addr_size);
+            packets_sent++;
         }
 
+        // for (int i = 0; i < cwnd - packets_sent; i++)
+        // {
+        //     if ( total_packets == seq_num + packets_sent - 1 ) {
+        //         last = '1';
+        //     } 
+
+        //     build_packet(&pkt, seq_num, cwnd + packets_sent, last, ack, PAYLOAD_SIZE, filestart + (( seq_num + packets_sent ) * PAYLOAD_SIZE));
+        //     // printf("Built a packet size: %lu\n", sizeof(pkt.payload));
+        //     printSend(&pkt, 0);
+        //     ack_num += 1;
+
+        //     sendto(send_sockfd, &pkt, sizeof(pkt), 0, (struct sockaddr*)&server_addr_to, sizeof(server_addr_to));
+        //     printf("Finished sending!\n");
+        //     usleep(250);
+        //     // usleep(250);
+        //     packets_sent++;
+        //     // seq_num++;
+
+        //     // if (last == '1') {
+        //     //     break;
+        //     // }
+        //     if (last == '1')
+        //     {
+        //         break;
+        //     }
+        // }
         if (recvfrom(listen_sockfd, &ack_pkt, sizeof(ack_pkt), 0, (struct sockaddr *)&server_addr_from, &addr_size) < 0)
         {
             // TIMEOUT
-            printf("Timeout while waiting for ACK\n");
+            printf("Timeout while waiting for ACK\n\n");
             last = '0';
             ack_num = seq_num;
             // dup_acks++;
-            if ( cwnd >= 1 )
-                cwnd = cwnd * AIMD_DECREASE_FACTOR;
-            else
-                cwnd = 1;
+
+            // FULL RESET
+            cwnd = 1; 
+
+            // TODO: WHEN SUBMITTING TO GRADESCOPE USE THIS
+                //ssthresh = max( (int)(cwnd/2), 2);
+
+            // TODO: WHEN RUNNING LOCALLY, DO THIS
+            ssthresh = fmax( (int)(cwnd/2), 2);
+            // replace with 
+            packets_sent = 0; // reset cwnd buffer
         } 
-        else if ( ack_pkt.acknum == ack_num ) 
+        else if ( ack_pkt.acknum == ack_num ) // GOOD ACK
         {
             // SUCCESS
             printf("Success, ACK = %d\n", ack_num);
-            seq_num = ack_num; // increase SEQ
-            cwnd = AIMD_INCREASE_FACTOR * cwnd;
+            // seq_num = ack_num; // increase SEQ
+            // cwnd = AIMD_INCREASE_FACTOR * cwnd;
+
+            if (fast_retransmit)
+            {
+                cwnd = ssthresh;
+                fast_retransmit = false;
+            }
+            else
+            {
+                if ((int)cwnd <= ssthresh) {
+                    // cwnd += (ack_pkt.acknum - seq_num);
+                    cwnd++;
+                }
+                else {
+                    //cwnd += (float)(ack_pkt.acknum - seq_num)/cwnd;
+                    cwnd += (1/cwnd);
+                    // cwnd += (float)(1/)
+                }
+            }
+            // packets_sent -= (ack_pkt.acknum - seq_num);
+            packets_sent = 0;
+            seq_num = ack_pkt.acknum;
+            ack_num = ack_pkt.acknum;
+            dup_acks = 0;
         } 
-        else 
+        else // BAD ACK
         {
-            // INCORRECT ACK -> ACK < EXP_ACK
+            // // INCORRECT ACK -> ACK < EXP_ACK
             printf("Bad ACK, ACK = %d\n", ack_num);
-            ack_num = seq_num;
             last = '0';
+            seq_num = ack_pkt.acknum;
+            ack_num = ack_pkt.acknum;
+            packets_sent = 0;
+            if (dup_acks == 3) // ENTER FAST RETRANSMIT AFTER 3 DUP ACKS
+            {
+                fast_retransmit = true;
+
+                // TODO: WHEN SUBMITTING TO GRADESCOPE USE THIS
+                //ssthresh = max( (int)(cwnd/2), 2);
+
+                // TODO: WHEN RUNNING LOCALLY, DO THIS
+                ssthresh = fmax( (int)(cwnd/2), 2);
+                cwnd = ssthresh + 3;
+                build_packet(&pkt, seq_num, ack_num, last, ack, PAYLOAD_SIZE, filestart + (seq_num * PAYLOAD_SIZE));
+                sendto(send_sockfd, &pkt, sizeof(pkt), 0, (struct sockaddr *)&server_addr_to, addr_size);
+            }
+            else if (dup_acks > 3)
+            {
+                //cwnd++;
+                cwnd = cwnd/2;
+            }
         }
 
-        if (seq_num > total_packets && last == '1') {
+        if (last == '1') {
             // If it's the last packet, break out of the main loop
             break;
         }

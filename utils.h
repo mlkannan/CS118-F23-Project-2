@@ -16,7 +16,8 @@
 #define TIMEOUT 2
 #define MAX_SEQUENCE 1024
 
-
+//#define MAX_PACKETS = 65535
+#define MAX_PACKETS 5000
 
 // Packet Layout
 // You may change this if you want to

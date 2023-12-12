@@ -62,21 +62,80 @@ int main() {
     int current_batch_size = 0;
     int cwnd = 1;
     int last_pkt_seq = -100;
-    struct packet packet_buffer[MAX_BATCH_SIZE];
+    struct packet packet_buffer[MAX_PACKETS];
     memset(&packet_buffer, 0, sizeof(packet_buffer));
     char last = '0';
     // expected sequence number is equivalent to min sequence number
 
     printf("File opened\n");
 
-    while (1) {
-        int packets_received = 0;
+    int packets_received = 0;
+    int last_seq_loaded = 0;
 
-        while (1) {
-            printf("waiting on a packet\n");
-            recv_len = recvfrom(listen_sockfd, &buffer, sizeof(buffer), 0, (struct sockaddr*)&client_addr_from, &addr_size);
-            cwnd = buffer.acknum;
+    while (1)
+    {
+        printf("waiting on a packet\n");
+        recv_len = recvfrom(listen_sockfd, &buffer, sizeof(buffer), 0, (struct sockaddr*)&client_addr_from, &addr_size);
+        // cwnd = buffer.acknum;
 
+        // If I don't have this packet yet, load it into packet buffer
+        printf("recv packet seq = %d\n", buffer.seqnum);
+        if ( packet_buffer[buffer.seqnum].length == 0 && recv_len > 0 )
+        {
+            packet_buffer[buffer.seqnum] = buffer;
+            printf("yeha");
+            printf("%d\n", packet_buffer[buffer.seqnum].length);
+            packets_received++;
+        }
+        // if ( packets_received == buffer.seqnum + 1 && last_seq_loaded != buffer.seqnum )
+        // {
+        //     for ( ; last_seq_loaded != buffer.seqnum; last_seq_loaded++ )
+        //     {
+        //         printf("\n\nLoading packet %d into output\n\n\n", last_seq_loaded);
+        //         fprintf(fp, "%.*s", packet_buffer[last_seq_loaded].length, packet_buffer[last_seq_loaded].payload);
+        //     }
+        // }
+
+        if ( buffer.seqnum == expected_seq_num && packet_buffer[buffer.seqnum].length > 0 ) // else: leave exp_seq unchanged
+        {
+            expected_seq_num = buffer.seqnum + 1;
+            printf("Good ack\n");
+        }
+        else
+        {
+            printf("Bad ack\n");
+        }
+
+        if ( buffer.last == '1' )
+        {
+            printf("this is the last one");
+        }
+        
+        ack_pkt.acknum = expected_seq_num;
+        ack_pkt.seqnum = expected_seq_num;
+        ack_pkt.ack = '1';
+        ack_pkt.last = buffer.last;
+        ack_pkt.length = PAYLOAD_SIZE;
+
+        sendto(send_sockfd, &ack_pkt, sizeof(ack_pkt), 0, (struct sockaddr *)&client_addr_to, addr_size);
+        printf("sent ack\n");
+        printSend(&ack_pkt, false);
+
+        // if ( buffer.last == '1' /*&& last_seq_loaded == expected_seq_num*/ )
+        //     break;
+
+        if ( buffer.last == '1' )
+        {
+            for (int i = 1; i < LAST_PKT_SENDS; i++ )
+                sendto(send_sockfd, &ack_pkt, ack_pkt.length, 0, (struct sockaddr*)&client_addr_to, addr_size);
+            break;
+        }
+
+        // else
+        // {
+        //     // wait for client side timeout.
+        // }
+            /*
             if ( buffer.seqnum >= expected_seq_num ) 
             {// GOOD ACK
                 // expected_seq_num += 1;
@@ -172,6 +231,13 @@ int main() {
         // if (buffer.last == '1') {
         //     break;
         // }
+        */
+    }
+
+    for ( int i = 0; i != packets_received; i++ ) // put final packets into output
+    {
+        // printf("\n\nLoading packet %d into output\n\n\n", i);
+        fprintf(fp, "%.*s", packet_buffer[i].length, packet_buffer[i].payload);
     }
 
     printf("Done receiving");
